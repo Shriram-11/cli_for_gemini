@@ -1,0 +1,10 @@
+gemini-cli/
+├── src/
+│   ├── your_script.py
+│   └── config.json
+├── requirements.txt
+├── setup_script.iss
+├── dist/
+│   └── gemini-cli.exe  # Standalone executable created by PyInstaller
+├── build/
+└── GeminiCLIInstaller.exe  # Optional: Windows installer created by Inno Setup
