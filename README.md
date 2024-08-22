@@ -114,5 +114,3 @@ We welcome contributions to improve the Gemini CLI. To contribute:
 This project is licensed under the GNU GENERAL PUBLIC License - see the [LICENSE](LICENSE) file for details.
 
 ---
-
-Feel free to customize the links and add any additional details specific to your project!
