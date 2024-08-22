@@ -108,12 +108,12 @@ def generate_response(prompt):
 def ask_questions():
     """Start a loop where the user can ask questions to the Gemini API."""
     console.print(
-        "[bold blue]Ask your questions (type 'exit' or 'quit' to stop):[/]")
+        "[bold blue]Ask your questions (type 'exit' to leave this mode):[/]")
 
     while True:
         prompt = Prompt.ask("\n[bold cyan]> [/]")
-        if prompt.lower() in ["exit", "quit"]:
-            console.print("[bold yellow]Exiting...[/]")
+        if prompt.lower() == "exit":
+            console.print("[bold yellow]Exiting ask mode...[/]")
             break
 
         if not prompt.strip():
@@ -124,9 +124,74 @@ def ask_questions():
         generate_response(prompt)
 
 
+def show_help():
+    """Display help information for both command-based and interactive modes."""
+    help_text = """[green]
+    Gemini CLI - Command Line Interface
+
+    Usage: gemini-cli.exe <command>
+           gemini-cli.exe
+
+    Available Commands:
+    
+    - setkey       : Set the Gemini API key. You will be prompted to enter your API key, which will be saved for future use.
+    - ask          : Ask a question using the Gemini API. You'll enter an interactive mode where you can type questions.
+    - resetkey     : Reset the Gemini API key by removing it from the configuration.
+    - help         : Show this help information.
+
+    Interactive Mode:
+    When running the CLI without any command, you will enter an interactive mode where you can type the following commands:
+
+    - setkey       : Set the Gemini API key.
+    - ask          : Ask a question using the Gemini API.
+    - resetkey     : Reset the Gemini API key.
+    - help         : Show this help information.
+    - exit         : Exit the ask mode.
+    - quit         : Quit the interactive mode.
+
+    Example Usage:
+
+    - Command Mode:
+      Set API Key: gemini-cli.exe setkey
+      Ask a Question: gemini-cli.exe ask
+      Reset API Key: gemini-cli.exe resetkey
+      Show Help: gemini-cli.exe help
+
+    - Interactive Mode:
+      Run 'gemini-cli.exe' and enter commands interactively.
+    [/]
+    """
+    console.print(help_text)
+
+
+def interactive_mode():
+    """Run the CLI in interactive mode."""
+    console.print("[bold green]Entering interactive mode. Type 'help' for available commands.[/]")
+    
+    while True:
+        command = input('\n>').strip()
+        if command.lower() == "quit":
+            console.print("[bold yellow]Exiting interactive mode...[/]")
+            break
+        if command == "setkey":
+            set_api_key()
+        elif command == "ask":
+            ask_questions()
+        elif command == "resetkey":
+            reset_api_key()
+        elif command == "help":
+            show_help()
+        else:
+            console.print("[bold red]Unknown command. Available commands: setkey, ask, resetkey, help, quit[/]")
+
+
 def main():
-    if len(sys.argv) < 2:
-        console.print("[bold red]Usage: gemini-cli <command>[/]")
+    if len(sys.argv) == 1:
+        interactive_mode()
+        return
+
+    if len(sys.argv) > 2:
+        console.print("[bold red]Unknown command. Use gemini-cli.exe help[/]")
         return
 
     command = sys.argv[1]
@@ -137,9 +202,10 @@ def main():
         ask_questions()
     elif command == "resetkey":
         reset_api_key()
+    elif command == "help":
+        show_help()
     else:
-        console.print(
-            "[bold red]Unknown command. Available commands: setkey, ask, resetkey[/]")
+        console.print("[bold red]Unknown command. Available commands: setkey, ask, resetkey, help[/]")
 
 
 if __name__ == "__main__":

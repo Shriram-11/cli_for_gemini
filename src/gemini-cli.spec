@@ -5,7 +5,7 @@ a = Analysis(
     ['cli_script.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('config.json', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
