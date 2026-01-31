@@ -74,8 +74,8 @@ def generate_response(prompt):
         # Configure the generative AI with the API key
         genai.configure(api_key=config["api_key"])
 
-        # Create a model instance for interacting with the Gemini API
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # FIXED: Updated model name to gemini-2.5-flash (1.5-flash is retired/404)
+        model = genai.GenerativeModel('gemini-2.5-flash')
 
         # Create a threading event to stop the loading animation
         stop_event = threading.Event()
@@ -92,16 +92,21 @@ def generate_response(prompt):
         stop_event.set()
         loading_thread.join()
 
-        # Slight delay to ensure the animation clears properly
-        time.sleep(0.1)
-
-        # Display the response in a formatted way
-        if response is not None:
+        # FIXED: Improved streaming display logic for Rich
+        full_response = ""
+        console.print("\n[bold green]Gemini:[/]")
+        
+        with Live(console=console, vertical_overflow="visible") as live:
             for chunk in response:
-                markdown_text = chunk.text.strip()
-                console.print(Markdown(markdown_text))
+                if chunk.text:
+                    full_response += chunk.text
+                    # Update the Markdown live as it streams
+                    live.update(Markdown(full_response))
 
     except Exception as e:
+        # Stop animation if an error occurs
+        if 'stop_event' in locals():
+            stop_event.set()
         console.print(f"[bold red]Error: {e}[/]")
 
 
@@ -134,31 +139,13 @@ def show_help():
 
     Available Commands:
     
-    - setkey       : Set the Gemini API key. You will be prompted to enter your API key, which will be saved for future use.
-    - ask          : Ask a question using the Gemini API. You'll enter an interactive mode where you can type questions.
-    - resetkey     : Reset the Gemini API key by removing it from the configuration.
-    - help         : Show this help information.
-
-    Interactive Mode:
-    When running the CLI without any command, you will enter an interactive mode where you can type the following commands:
-
     - setkey       : Set the Gemini API key.
-    - ask          : Ask a question using the Gemini API.
-    - resetkey     : Reset the Gemini API key.
+    - ask          : Ask a question (interactive mode).
+    - resetkey     : Reset the saved API key.
     - help         : Show this help information.
-    - exit         : Exit the ask mode.
-    - quit         : Quit the interactive mode.
 
-    Example Usage:
-
-    - Command Mode:
-      Set API Key: gemini-cli.exe setkey
-      Ask a Question: gemini-cli.exe ask
-      Reset API Key: gemini-cli.exe resetkey
-      Show Help: gemini-cli.exe help
-
-    - Interactive Mode:
-      Run 'gemini-cli.exe' and enter commands interactively.
+    Interactive Mode Commands:
+    setkey, ask, resetkey, help, quit, exit
     [/]
     """
     console.print(help_text)
@@ -169,8 +156,8 @@ def interactive_mode():
     console.print("[bold green]Entering interactive mode. Type 'help' for available commands.[/]")
     
     while True:
-        command = input('\n>').strip()
-        if command.lower() == "quit":
+        command = input('\n> ').strip().lower()
+        if command in ["quit", "exit"]:
             console.print("[bold yellow]Exiting interactive mode...[/]")
             break
         if command == "setkey":
@@ -181,6 +168,8 @@ def interactive_mode():
             reset_api_key()
         elif command == "help":
             show_help()
+        elif command == "":
+            continue
         else:
             console.print("[bold red]Unknown command. Available commands: setkey, ask, resetkey, help, quit[/]")
 
@@ -190,11 +179,7 @@ def main():
         interactive_mode()
         return
 
-    if len(sys.argv) > 2:
-        console.print("[bold red]Unknown command. Use gemini-cli.exe help[/]")
-        return
-
-    command = sys.argv[1]
+    command = sys.argv[1].lower()
 
     if command == "setkey":
         set_api_key()
@@ -205,7 +190,7 @@ def main():
     elif command == "help":
         show_help()
     else:
-        console.print("[bold red]Unknown command. Available commands: setkey, ask, resetkey, help[/]")
+        console.print("[bold red]Unknown command. Use 'help' for a list of commands.[/]")
 
 
 if __name__ == "__main__":
