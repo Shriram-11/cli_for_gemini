@@ -1,9 +1,8 @@
-import google.generativeai as genai
 import json
-import os
 import time
 import sys
 import threading
+from google import genai
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.prompt import Prompt
@@ -62,104 +61,99 @@ def loading_animation(stop_event):
 
 
 def generate_response(prompt):
-    """Generate a response using the Gemini API."""
+    """Generate a response using the NEW Google GenAI SDK syntax."""
     config = load_config()
 
     if "api_key" not in config:
         console.print(
-            "[bold red]API key not set. Please use the setkey command to set your API key.[/]")
+            "[bold red]Error: API key not set. Use 'setkey' first.[/]")
         return
 
     try:
-        # Configure the generative AI with the API key
-        genai.configure(api_key=config["api_key"])
+        # Initialize Client
+        client = genai.Client(api_key=config["api_key"])
 
-        # FIXED: Updated model name to gemini-2.5-flash (1.5-flash is retired/404)
-        model = genai.GenerativeModel('gemini-2.5-flash')
-
-        # Create a threading event to stop the loading animation
         stop_event = threading.Event()
-
-        # Start the loading animation in a separate thread
         loading_thread = threading.Thread(
             target=loading_animation, args=(stop_event,))
         loading_thread.start()
 
-        # Make the API call to generate content
-        response = model.generate_content(prompt, stream=True)
+        # FIX 1: Use generate_content_stream() instead of generate_content(stream=True)
+        response = client.models.generate_content_stream(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
 
-        # Stop the loading animation after receiving the response
         stop_event.set()
         loading_thread.join()
 
-        # FIXED: Improved streaming display logic for Rich
         full_response = ""
         console.print("\n[bold green]Gemini:[/]")
-        
+
         with Live(console=console, vertical_overflow="visible") as live:
             for chunk in response:
-                if chunk.text:
-                    full_response += chunk.text
-                    # Update the Markdown live as it streams
+                # FIX 2: Handle the tuple wrapper if the SDK yields one
+                # This fixes the "'tuple' object has no attribute 'text'" error
+                item = chunk[0] if isinstance(chunk, tuple) else chunk
+
+                if hasattr(item, 'text') and item.text:
+                    full_response += item.text
                     live.update(Markdown(full_response))
 
     except Exception as e:
-        # Stop animation if an error occurs
         if 'stop_event' in locals():
             stop_event.set()
         console.print(f"[bold red]Error: {e}[/]")
 
 
 def ask_questions():
-    """Start a loop where the user can ask questions to the Gemini API."""
-    console.print(
-        "[bold blue]Ask your questions (type 'exit' to leave this mode):[/]")
-
+    """Interactive loop for asking questions."""
+    console.print("[bold blue]Ask your questions (type 'exit' to leave):[/]")
     while True:
         prompt = Prompt.ask("\n[bold cyan]> [/]")
         if prompt.lower() == "exit":
-            console.print("[bold yellow]Exiting ask mode...[/]")
             break
-
         if not prompt.strip():
-            console.print("[bold red]Please enter a valid prompt.[/]")
             continue
-
-        # Generate a response from the Gemini API
         generate_response(prompt)
 
 
 def show_help():
-    """Display help information for both command-based and interactive modes."""
+    """Display help information."""
     help_text = """[green]
-    Gemini CLI - Command Line Interface
-
-    Usage: gemini-cli.exe <command>
-           gemini-cli.exe
-
-    Available Commands:
-    
-    - setkey       : Set the Gemini API key.
-    - ask          : Ask a question (interactive mode).
-    - resetkey     : Reset the saved API key.
-    - help         : Show this help information.
-
-    Interactive Mode Commands:
-    setkey, ask, resetkey, help, quit, exit
-    [/]
-    """
+    Gemini CLI - 2026 Edition (v2.1)
+    Commands: setkey, ask, resetkey, help, quit
+    [/]"""
     console.print(help_text)
 
 
 def interactive_mode():
-    """Run the CLI in interactive mode."""
-    console.print("[bold green]Entering interactive mode. Type 'help' for available commands.[/]")
-    
+    """Main interactive menu."""
+    console.print(
+        "[bold green]Gemini CLI Active. Type 'help' for commands.[/]")
     while True:
-        command = input('\n> ').strip().lower()
-        if command in ["quit", "exit"]:
-            console.print("[bold yellow]Exiting interactive mode...[/]")
+        cmd = input('\n> ').strip().lower()
+        if cmd in ["quit", "exit"]:
             break
+        elif cmd == "setkey":
+            set_api_key()
+        elif cmd == "ask":
+            ask_questions()
+        elif cmd == "resetkey":
+            reset_api_key()
+        elif cmd == "help":
+            show_help()
+        elif not cmd:
+            continue
+        else:
+            console.print("[bold red]Unknown command.[/]")
+
+
+def main():
+    if len(sys.argv) == 1:
+        interactive_mode()
+    else:
+        command = sys.argv[1].lower()
         if command == "setkey":
             set_api_key()
         elif command == "ask":
@@ -168,29 +162,8 @@ def interactive_mode():
             reset_api_key()
         elif command == "help":
             show_help()
-        elif command == "":
-            continue
         else:
-            console.print("[bold red]Unknown command. Available commands: setkey, ask, resetkey, help, quit[/]")
-
-
-def main():
-    if len(sys.argv) == 1:
-        interactive_mode()
-        return
-
-    command = sys.argv[1].lower()
-
-    if command == "setkey":
-        set_api_key()
-    elif command == "ask":
-        ask_questions()
-    elif command == "resetkey":
-        reset_api_key()
-    elif command == "help":
-        show_help()
-    else:
-        console.print("[bold red]Unknown command. Use 'help' for a list of commands.[/]")
+            console.print("[bold red]Unknown command.[/]")
 
 
 if __name__ == "__main__":
